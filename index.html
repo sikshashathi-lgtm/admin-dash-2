@@ -1,0 +1,730 @@
+ <!DOCTYPE html>
+<html lang="ne">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Management Admin Dashboard</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
+
+    <!-- Header Section -->
+    <header class="bg-indigo-700 text-white shadow-lg sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-user-graduate text-3xl text-amber-400"></i>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-wide">Tutor Admin Portal</h1>
+                    <p class="text-xs text-indigo-200">शिक्षक व्यवस्थापन तथा लोकेशन ट्र्याकिङ प्रणाली</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="openWebMapModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-earth-americas"></i> Open Interactive Map Portal
+                </button>
+                <button onclick="openDuplicateModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-copy"></i> Check & Delete Duplicates
+                </button>
+                <button onclick="fetchTutorData()" class="bg-indigo-600 hover:bg-indigo-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-rotate" id="refresh-icon"></i> Reload Data
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Total Tutors</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="stat-total">0</h3>
+                </div>
+                <div class="bg-indigo-100 p-3 rounded-full text-indigo-600"><i class="fa-solid fa-users text-xl"></i></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Mapped Locations</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="stat-mapped">0</h3>
+                </div>
+                <div class="bg-emerald-100 p-3 rounded-full text-emerald-600"><i class="fa-solid fa-location-dot text-xl"></i></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Home Tuition</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="stat-home">0</h3>
+                </div>
+                <div class="bg-amber-100 p-3 rounded-full text-amber-600"><i class="fa-solid fa-house-chimney-user text-xl"></i></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-500 uppercase font-semibold">Online Tuition</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="stat-online">0</h3>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full text-purple-600"><i class="fa-solid fa-laptop-code text-xl"></i></div>
+            </div>
+        </div>
+
+        <!-- Google Maps View Section & Mapped Tutors List -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div class="lg:col-span-3 space-y-3">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-2">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-map-location-dot text-indigo-600"></i> Google Maps Location View
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <span id="mapStatusText" class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-200">Standard View</span>
+                        <button onclick="resetMainMap()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-1 rounded-lg font-medium">Reset Map</button>
+                    </div>
+                </div>
+                <div class="w-full h-[450px] rounded-xl overflow-hidden border border-slate-200 relative">
+                    <iframe id="mainMapFrame" width="100%" height="100%" frameborder="0" style="border:0;" src="https://maps.google.com/maps?q=28.2096,83.9856&z=12&output=embed" allowfullscreen></iframe>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col h-[485px]">
+                <h3 class="font-bold text-xs uppercase text-slate-600 mb-2 flex items-center justify-between">
+                    <span>Mapped Tutors List</span>
+                    <span id="mapped-badge" class="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px]">0</span>
+                </h3>
+                <div id="mappedTutorsList" class="overflow-y-auto custom-scrollbar space-y-2 flex-grow pr-1 text-xs">
+                    <p class="text-slate-400 text-center py-10">Loading mapped locations...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div class="relative w-full md:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Name, Phone, Area wa Subject bata khojnuhos..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+
+            <div class="flex flex-wrap gap-3 w-full md:w-auto justify-end">
+                <select id="genderFilter" onchange="filterTable()" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <option value="">All Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+
+                <select id="modeFilter" onchange="filterTable()" class="border border-slate-300 rounded-lg text-sm px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <option value="">Teaching Mode</option>
+                    <option value="Home">Home Tuition</option>
+                    <option value="Online">Online Tuition</option>
+                    <option value="Both">Both</option>
+                </select>
+
+                <button onclick="exportCSV()" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-file-csv"></i> Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Tutor Table Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 uppercase text-xs font-bold border-b border-slate-200">
+                            <th class="py-3 px-4">Reg Date</th>
+                            <th class="py-3 px-4">Full Name</th>
+                            <th class="py-3 px-4">Contact Info (Call / WhatsApp)</th>
+                            <th class="py-3 px-4">Current Area</th>
+                            <th class="py-3 px-4">Education</th>
+                            <th class="py-3 px-4">Subjects</th>
+                            <th class="py-3 px-4">Mode</th>
+                            <th class="py-3 px-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tutorTableBody" class="divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td colspan="8" class="text-center py-8 text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl text-indigo-600 mb-2"></i>
+                                <p>Data load hudai cha, kripaya parkhanuhos...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Interactive Web Map Modal -->
+    <div id="webMapModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-60" onclick="closeModal('webMapModal')"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-6xl mx-auto rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col h-[90vh]">
+            <div class="px-6 py-4 bg-emerald-700 text-white flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-earth-americas"></i> Interactive Web Map Portal (Shiksha Shathi)</h3>
+                <button onclick="closeModal('webMapModal')" class="text-white hover:text-slate-200 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="flex-grow w-full h-full bg-slate-100">
+                <iframe id="webMapPortalFrame" width="100%" height="100%" frameborder="0" style="border:0;" src="" allowfullscreen></iframe>
+            </div>
+            <div class="px-6 py-3 bg-slate-100 border-t flex justify-end">
+                <button onclick="closeModal('webMapModal')" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Close Map</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detailsModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-50" onclick="closeModal('detailsModal')"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+            <div class="px-6 py-4 bg-indigo-700 text-white flex justify-between items-center rounded-t-xl">
+                <h3 class="text-lg font-bold">Tutor Full Profile</h3>
+                <button onclick="closeModal('detailsModal')" class="text-white hover:text-slate-200 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 space-y-4" id="modalContent"></div>
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                <div class="space-x-2">
+                    <button id="editProfileBtn" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-pen-to-square"></i> Edit Profile</button>
+                    <button id="deleteProfileBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fa-solid fa-trash"></i> Delete Profile</button>
+                </div>
+                <button onclick="closeModal('detailsModal')" class="bg-slate-500 text-white px-4 py-2 rounded-lg text-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-50" onclick="closeModal('editModal')"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+            <div class="px-6 py-4 bg-indigo-700 text-white flex justify-between items-center rounded-t-xl">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-pen-to-square"></i> Edit Tutor All Details</h3>
+                <button onclick="closeModal('editModal')" class="text-white hover:text-slate-200 text-2xl font-bold">&times;</button>
+            </div>
+            <form id="editForm" onsubmit="submitEditForm(event)" class="p-6 space-y-4 text-sm">
+                <input type="hidden" name="action" value="edit">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="font-semibold block mb-1">Reg Date</label>
+                        <input type="text" name="regDate" id="edit_regDate" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Full Name</label>
+                        <input type="text" name="fullName" id="edit_fullName" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Gender</label>
+                        <input type="text" name="gender" id="edit_gender" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Date of Birth</label>
+                        <input type="text" name="dob" id="edit_dob" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Phone Number (Main ID)</label>
+                        <input type="text" name="phone" id="edit_phone" readonly class="w-full border p-2 rounded bg-slate-100 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Alt Phone</label>
+                        <input type="text" name="altPhone" id="edit_altPhone" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Email</label>
+                        <input type="text" name="email" id="edit_email" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Permanent Address</label>
+                        <input type="text" name="permanentAddress" id="edit_permanentAddress" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Current Area</label>
+                        <input type="text" name="currentArea" id="edit_currentArea" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Vehicle</label>
+                        <input type="text" name="vehicle" id="edit_vehicle" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Map Coordinates</label>
+                        <input type="text" name="mapCoords" id="edit_mapCoords" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Google Map Link</label>
+                        <input type="text" name="googleMapLink" id="edit_googleMapLink" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Highest Edu</label>
+                        <input type="text" name="highestEdu" id="edit_highestEdu" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Faculty / Subject</label>
+                        <input type="text" name="faculty" id="edit_faculty" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">College</label>
+                        <input type="text" name="college" id="edit_college" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Teacher Type</label>
+                        <input type="text" name="teacherType" id="edit_teacherType" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Teaching Mode</label>
+                        <input type="text" name="teachingMode" id="edit_teachingMode" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Experience</label>
+                        <input type="text" name="experience" id="edit_experience" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Preferred Time</label>
+                        <input type="text" name="preferredTime" id="edit_preferredTime" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Expected Fee</label>
+                        <input type="text" name="expectedFee" id="edit_expectedFee" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Subjects Can Teach</label>
+                        <input type="text" name="subjects" id="edit_subjects" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Payment Method</label>
+                        <input type="text" name="paymentMethod" id="edit_paymentMethod" class="w-full border p-2 rounded">
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Transaction ID</label>
+                        <input type="text" name="txnId" id="edit_txnId" class="w-full border p-2 rounded">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeModal('editModal')" class="bg-slate-300 text-slate-700 px-4 py-2 rounded-lg">Cancel</button>
+                    <button type="submit" id="saveBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium shadow hover:bg-indigo-700">Save All Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Duplicate Detection & Direct Delete Modal -->
+    <div id="duplicateModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-50" onclick="closeModal('duplicateModal')"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+            <div class="px-6 py-4 bg-amber-600 text-white flex justify-between items-center rounded-t-xl">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-copy"></i> Duplicate Tutors Detection & Deletion</h3>
+                <button onclick="closeModal('duplicateModal')" class="text-white hover:text-slate-200 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 space-y-4 text-sm" id="duplicateModalContent">
+                <p class="text-slate-500">Scanning for duplicates...</p>
+            </div>
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button onclick="closeModal('duplicateModal')" class="bg-slate-500 text-white px-4 py-2 rounded-lg text-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Section -->
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx4I0V9f7oNfSonJwHBZa4Kc7gj8CqULSdM3oMJxTM6nTEteQe9OTTKZ_JEdh0JUVA/exec";
+
+        let allTutorsData = [];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            fetchTutorData();
+        });
+
+        window.handleResponse = function(rows) {
+            const refreshIcon = document.getElementById('refresh-icon');
+            if(refreshIcon) refreshIcon.classList.remove('fa-spin');
+
+            if (!rows || rows.length <= 1) {
+                document.getElementById('tutorTableBody').innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-500">No data found.</td></tr>`;
+                return;
+            }
+            allTutorsData = rows.slice(1);
+            updateDashboardStats(allTutorsData);
+            renderTable(allTutorsData);
+            renderMappedTutorsList(allTutorsData);
+        };
+
+        function fetchTutorData() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            refreshIcon.classList.add('fa-spin');
+
+            const script = document.createElement('script');
+            script.src = SCRIPT_URL + "?callback=handleResponse";
+            script.onerror = function() {
+                fetch(SCRIPT_URL)
+                    .then(response => response.json())
+                    .then(rows => handleResponse(rows))
+                    .catch(err => {
+                        refreshIcon.classList.remove('fa-spin');
+                        console.error("Fetch Error:", err);
+                        document.getElementById('tutorTableBody').innerHTML = `<tr><td colspan="8" class="text-center py-6 text-red-500">Data load garna sakiyana. Network wa Script URL check garnuhos.</td></tr>`;
+                    });
+            };
+            document.body.appendChild(script);
+        }
+
+        function updateDashboardStats(data) {
+            document.getElementById('stat-total').innerText = data.length;
+            let mappedCount = 0, homeCount = 0, onlineCount = 0;
+
+            data.forEach(row => {
+                const coords = row[10];
+                const mode = (row[16] || "").toLowerCase();
+                if (coords && String(coords).includes(',')) mappedCount++;
+                if (mode.includes('home') || mode.includes('both')) homeCount++;
+                if (mode.includes('online') || mode.includes('both')) onlineCount++;
+            });
+
+            document.getElementById('stat-mapped').innerText = mappedCount;
+            document.getElementById('stat-home').innerText = homeCount;
+            document.getElementById('stat-online').innerText = onlineCount;
+        }
+
+        function renderMappedTutorsList(data) {
+            const listContainer = document.getElementById('mappedTutorsList');
+            listContainer.innerHTML = '';
+            let mappedRows = data.filter(row => row[10] && String(row[10]).includes(','));
+            
+            document.getElementById('mapped-badge').innerText = mappedRows.length;
+
+            if (mappedRows.length === 0) {
+                listContainer.innerHTML = `<p class="text-slate-400 text-center py-10">No mapped locations found.</p>`;
+                return;
+            }
+
+            mappedRows.forEach((row, index) => {
+                const name = row[1] || 'Tutor';
+                const area = row[8] || 'N/A';
+                const phone = row[4] || '';
+                const coords = row[10] || '';
+
+                const item = document.createElement('div');
+                item.className = "bg-white p-2.5 rounded border border-slate-200 hover:border-indigo-500 cursor-pointer transition shadow-sm flex items-center justify-between";
+                item.onclick = () => {
+                    showOnGoogleMap(coords, name);
+                };
+                item.innerHTML = `
+                    <div>
+                        <span class="bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded text-[10px] mr-1">#${index + 1}</span>
+                        <strong class="text-slate-800">${name}</strong>
+                        <div class="text-[11px] text-slate-500"><i class="fa-solid fa-location-dot text-emerald-600"></i> ${area}</div>
+                    </div>
+                    <div class="flex gap-1">
+                        <a href="tel:${phone}" onclick="event.stopPropagation()" class="text-indigo-600 p-1 hover:bg-slate-100 rounded" title="Call"><i class="fa-solid fa-phone text-xs"></i></a>
+                        <a href="https://wa.me/977${String(phone).replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" class="text-emerald-600 p-1 hover:bg-slate-100 rounded" title="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tutorTableBody');
+            tbody.innerHTML = '';
+
+            data.forEach((row) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 border-b border-slate-100 transition";
+                const phone = row[4] || 'N/A';
+                const altPhone = row[5] || '';
+                const email = row[6] || '';
+                const name = row[1] || 'N/A';
+                const coords = row[10] || '';
+                const whatsappUrl = `https://wa.me/977${String(phone).replace(/\D/g,'')}`;
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-xs text-slate-500">${row[0] || 'N/A'}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-800">${name} <br><span class="text-xs text-slate-400 font-normal">${row[2] || ''}</span></td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center gap-2">
+                            <a href="tel:${phone}" class="text-indigo-600 hover:underline font-medium"><i class="fa-solid fa-phone text-xs"></i> ${phone}</a>
+                            <a href="${whatsappUrl}" target="_blank" class="text-emerald-600 text-base" title="Chat on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                        </div>
+                        ${altPhone && altPhone !== 'N/A' ? `<div class="text-xs text-slate-500">Alt: <a href="tel:${altPhone}" class="hover:underline">${altPhone}</a></div>` : ''}
+                        ${email && email !== 'N/A' ? `<div class="text-xs text-slate-400"><a href="mailto:${email}" class="hover:underline"><i class="fa-solid fa-envelope"></i> ${email}</a></div>` : ''}
+                    </td>
+                    <td class="py-3 px-4">${row[8] || 'N/A'}</td>
+                    <td class="py-3 px-4">${row[12] || 'N/A'} <br><span class="text-xs text-slate-400">${row[13] || ''}</span></td>
+                    <td class="py-3 px-4"><span class="bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded font-medium">${row[20] || 'N/A'}</span></td>
+                    <td class="py-3 px-4"><span class="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded">${row[16] || 'N/A'}</span></td>
+                    <td class="py-3 px-4 text-center space-x-1">
+                        <button onclick="showOnGoogleMap('${coords}', '${name}')" class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 p-2 rounded-lg text-xs" title="View on Map"><i class="fa-solid fa-location-dot"></i></button>
+                        <button onclick="openDetailsModalByPhone('${phone}')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg text-xs" title="View Full Details"><i class="fa-solid fa-eye"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showOnGoogleMap(coords, name) {
+            const iframe = document.getElementById('mainMapFrame');
+            const statusText = document.getElementById('mapStatusText');
+
+            if (coords && coords.includes(',')) {
+                let parts = coords.split(',');
+                let lat = parts[0].trim();
+                let lng = parts[1].trim();
+                iframe.src = `https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed`;
+                statusText.innerText = `Location: ${name}`;
+            } else {
+                alert("Yo tutor ko valid coordinate uplabdha chaina.");
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetMainMap() {
+            document.getElementById('mainMapFrame').src = `https://maps.google.com/maps?q=28.2096,83.9856&z=12&output=embed`;
+            document.getElementById('mapStatusText').innerText = `Standard View`;
+        }
+
+        function openWebMapModal() {
+            document.getElementById('webMapPortalFrame').src = "https://sikshashathi-lgtm.github.io/Mapteacher/";
+            toggleModal('webMapModal', true);
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const genderFilter = document.getElementById('genderFilter').value.trim().toLowerCase();
+            const modeFilter = document.getElementById('modeFilter').value;
+
+            const filtered = allTutorsData.filter(row => {
+                const name = String(row[1] || "").toLowerCase();
+                const phone = String(row[4] || "").toLowerCase();
+                const altPhone = String(row[5] || "").toLowerCase();
+                const email = String(row[6] || "").toLowerCase();
+                const area = String(row[8] || "").toLowerCase();
+                const subjects = String(row[20] || "").toLowerCase();
+                const gender = String(row[2] || "").trim().toLowerCase();
+                const mode = String(row[16] || "");
+
+                const matchesSearch = name.includes(query) || phone.includes(query) || altPhone.includes(query) || email.includes(query) || area.includes(query) || subjects.includes(query);
+                const matchesGender = genderFilter === "" || gender === genderFilter;
+                const matchesMode = modeFilter === "" || mode.includes(modeFilter);
+
+                return matchesSearch && matchesGender && matchesMode;
+            });
+
+            renderTable(filtered);
+        }
+
+        function findTutorByPhone(phone) {
+            return allTutorsData.find(row => String(row[4]) === String(phone));
+        }
+
+        function openDuplicateModal() {
+            const content = document.getElementById('duplicateModalContent');
+            const phoneMap = {};
+
+            allTutorsData.forEach(row => {
+                let phone = String(row[4] || '').trim();
+                if (phone && phone !== 'N/A') {
+                    if (!phoneMap[phone]) phoneMap[phone] = [];
+                    phoneMap[phone].push(row);
+                }
+            });
+
+            let duplicates = Object.entries(phoneMap).filter(([phone, rows]) => rows.length > 1);
+
+            if (duplicates.length === 0) {
+                content.innerHTML = `<div class="text-center py-6 text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check text-2xl mb-2"></i><p>Kunai pani duplicate phone number vetiyena! Sabai unique chan.</p></div>`;
+            } else {
+                let html = `<p class="text-xs text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">Total <b>${duplicates.length}</b> phone number(s) duplicate vetiyeka chan:</p><div class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">`;
+                
+                duplicates.forEach(([phone, rows]) => {
+                    html += `<div class="bg-slate-50 p-3 rounded border border-slate-200">
+                        <div class="font-bold text-indigo-700 text-xs mb-2">Phone: ${phone} (${rows.length} entries)</div>`;
+                    
+                    rows.forEach((r, idx) => {
+                        html += `<div class="flex justify-between items-center bg-white p-2 rounded mt-1 border border-slate-100 text-xs">
+                            <div><strong>${r[1]}</strong> | Area: ${r[8]} | Reg: ${r[0]}</div>
+                            <button onclick="deleteTutorProfile('${phone}'); openDuplicateModal();" class="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded font-medium text-[11px]">
+                                <i class="fa-solid fa-trash"></i> Delete This Entry
+                            </button>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                });
+                html += `</div>`;
+                content.innerHTML = html;
+            }
+
+            toggleModal('duplicateModal', true);
+        }
+
+        function openDetailsModalByPhone(phone) {
+            const row = findTutorByPhone(phone);
+            if (!row) return;
+            const content = document.getElementById('modalContent');
+            
+            document.getElementById('deleteProfileBtn').setAttribute('onclick', `deleteTutorProfile('${phone}'); closeModal('detailsModal');`);
+            document.getElementById('editProfileBtn').setAttribute('onclick', `openEditModal('${phone}')`);
+
+            content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-700">
+                    <div class="border-b pb-2"><strong>Reg Date:</strong> ${row[0]}</div>
+                    <div class="border-b pb-2"><strong>Full Name:</strong> ${row[1]}</div>
+                    <div class="border-b pb-2"><strong>Gender:</strong> ${row[2]}</div>
+                    <div class="border-b pb-2"><strong>Date of Birth:</strong> ${row[3]}</div>
+                    <div class="border-b pb-2"><strong>Phone:</strong> <a href="tel:${row[4]}" class="text-indigo-600 underline">${row[4]}</a> (Alt: ${row[5] && row[5] !== 'N/A' ? `<a href="tel:${row[5]}" class="text-indigo-600 underline">${row[5]}</a>` : 'N/A'})</div>
+                    <div class="border-b pb-2"><strong>Email:</strong> ${row[6] && row[6] !== 'N/A' ? `<a href="mailto:${row[6]}" class="text-indigo-600 underline">${row[6]}</a>` : 'N/A'}</div>
+                    <div class="border-b pb-2"><strong>Permanent Address:</strong> ${row[7]}</div>
+                    <div class="border-b pb-2"><strong>Current Area:</strong> ${row[8]}</div>
+                    <div class="border-b pb-2"><strong>Vehicle:</strong> ${row[9]}</div>
+                    <div class="border-b pb-2"><strong>Map Coordinates:</strong> ${row[10]}</div>
+                    <div class="border-b pb-2"><strong>Google Map Link:</strong> ${row[11] !== 'N/A' ? `<a href="${row[11]}" target="_blank" class="text-indigo-600 underline font-semibold"><i class="fa-solid fa-map-pin"></i> Open Map Link</a>` : 'N/A'}</div>
+                    <div class="border-b pb-2"><strong>Highest Edu:</strong> ${row[12]} (${row[13]})</div>
+                    <div class="border-b pb-2"><strong>College:</strong> ${row[14]}</div>
+                    <div class="border-b pb-2"><strong>Teacher Type:</strong> ${row[15]}</div>
+                    <div class="border-b pb-2"><strong>Teaching Mode:</strong> ${row[16]}</div>
+                    <div class="border-b pb-2"><strong>Experience:</strong> ${row[17]}</div>
+                    <div class="border-b pb-2"><strong>Preferred Time:</strong> ${row[18]}</div>
+                    <div class="border-b pb-2"><strong>Expected Fee:</strong> ${row[19]}</div>
+                    <div class="border-b pb-2"><strong>Subjects:</strong> ${row[20]}</div>
+                    <div class="border-b pb-2"><strong>Payment Method / Txn ID:</strong> ${row[21]} / ${row[22]}</div>
+                </div>
+                
+                <h4 class="font-bold text-slate-800 border-b pt-4 pb-1">Documents & Drive Links</h4>
+                <div class="flex flex-wrap gap-4 pt-2">
+                    ${renderDocLink("PP Photo", row[23])}
+                    ${renderDocLink("Citizenship", row[24])}
+                    ${renderDocLink("Payment Receipt", row[25])}
+                    ${renderDocLink("Drive Folder", row[26])}
+                </div>
+            `;
+            toggleModal('detailsModal', true);
+        }
+
+        function openEditModal(phone) {
+            const row = findTutorByPhone(phone);
+            if (!row) return;
+
+            closeModal('detailsModal');
+
+            document.getElementById('edit_regDate').value = row[0] || '';
+            document.getElementById('edit_fullName').value = row[1] || '';
+            document.getElementById('edit_gender').value = row[2] || '';
+            document.getElementById('edit_dob').value = row[3] || '';
+            document.getElementById('edit_phone').value = row[4] || '';
+            document.getElementById('edit_altPhone').value = row[5] || '';
+            document.getElementById('edit_email').value = row[6] || '';
+            document.getElementById('edit_permanentAddress').value = row[7] || '';
+            document.getElementById('edit_currentArea').value = row[8] || '';
+            document.getElementById('edit_vehicle').value = row[9] || '';
+            document.getElementById('edit_mapCoords').value = row[10] || '';
+            document.getElementById('edit_googleMapLink').value = row[11] || '';
+            document.getElementById('edit_highestEdu').value = row[12] || '';
+            document.getElementById('edit_faculty').value = row[13] || '';
+            document.getElementById('edit_college').value = row[14] || '';
+            document.getElementById('edit_teacherType').value = row[15] || '';
+            document.getElementById('edit_teachingMode').value = row[16] || '';
+            document.getElementById('edit_experience').value = row[17] || '';
+            document.getElementById('edit_preferredTime').value = row[18] || '';
+            document.getElementById('edit_expectedFee').value = row[19] || '';
+            document.getElementById('edit_subjects').value = row[20] || '';
+            document.getElementById('edit_paymentMethod').value = row[21] || '';
+            document.getElementById('edit_txnId').value = row[22] || '';
+
+            toggleModal('editModal', true);
+        }
+
+        function submitEditForm(e) {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+            btn.disabled = true;
+
+            const formData = new FormData(document.getElementById('editForm'));
+            const params = new URLSearchParams(formData);
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            })
+            .then(() => {
+                alert("Data successfully updated!");
+                btn.innerHTML = `Save All Changes`;
+                btn.disabled = false;
+                closeModal('editModal');
+                fetchTutorData();
+            })
+            .catch(err => {
+                alert("Error updating profile: " + err);
+                btn.innerHTML = `Save All Changes`;
+                btn.disabled = false;
+            });
+        }
+
+        function deleteTutorProfile(phone) {
+            if (confirm("Kyah tapai yo tutor ko profile delete garna chahanuhuncha?")) {
+                const params = new URLSearchParams();
+                params.append('action', 'delete');
+                params.append('phone', phone);
+
+                fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
+                })
+                .then(() => {
+                    alert("Profile successfully deleted!");
+                    fetchTutorData();
+                })
+                .catch(err => {
+                    alert("Error deleting profile: " + err);
+                });
+            }
+        }
+
+        function renderDocLink(label, url) {
+            if (!url || url === 'N/A') return `<span class="bg-slate-100 text-slate-400 text-xs px-3 py-2 rounded">${label}: N/A</span>`;
+            return `<a href="${url}" target="_blank" class="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs px-3 py-2 rounded border border-indigo-200 font-medium flex items-center gap-1"><i class="fa-solid fa-paperclip"></i> ${label}</a>`;
+        }
+
+        function toggleModal(modalId, show) {
+            const modal = document.getElementById(modalId);
+            if (show) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                document.body.classList.add('modal-active');
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                document.body.classList.remove('modal-active');
+            }
+        }
+
+        function closeModal(modalId) {
+            toggleModal(modalId, false);
+        }
+
+        function exportCSV() {
+            if (allTutorsData.length === 0) return alert("Kuni pani data uplabdha chaina!");
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Reg Date,Full Name,Gender,DOB,Phone,Alt Phone,Email,Permanent Address,Current Area,Vehicle,Map Coordinates,Google Map Link,Highest Edu,Faculty,College,Teacher Type,Teaching Mode,Experience,Preferred Time,Expected Fee,Subjects,Payment Method,Txn ID\n";
+
+            allTutorsData.forEach(row => {
+                let cleanRow = row.slice(0, 23).map(field => `"${String(field || '').replace(/"/g, '""')}"`);
+                csvContent += cleanRow.join(",") + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Tutors_Export_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
